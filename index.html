@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cybersecurity Trivia Wheel</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      color: white;
+      text-align: center;
+      background: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1470&q=80') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      justify-content: flex-start;
+      padding-top: 40px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: -1;
+    }
+
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #00ffa8, 0 0 20px #00ffa8;
+      letter-spacing: 2px;
+    }
+
+    canvas {
+      margin-top: 20px;
+      border-radius: 20px;
+      box-shadow: 0 0 30px #00ffa8aa;
+      background: #111;
+    }
+
+    #spinBtn {
+      margin-top: 25px;
+      padding: 15px 40px;
+      font-size: 20px;
+      background: linear-gradient(45deg, #00ffa8, #00c2ff);
+      border: none;
+      color: #111;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 50px;
+      box-shadow: 0 0 15px #00ffa8;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+
+    #spinBtn:hover {
+      background: linear-gradient(45deg, #00c2ff, #00ffa8);
+      box-shadow: 0 0 30px #00fff5;
+      transform: scale(1.05);
+    }
+
+    #result, #score, #questionBox {
+      margin-top: 30px;
+      font-size: 22px;
+      font-weight: 600;
+      text-shadow: 0 0 8px #00ffa8;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #score {
+      font-size: 24px;
+      margin-top: 15px;
+      text-shadow: 0 0 10px #00ffcc;
+    }
+
+    .answerBtn {
+      display: block;
+      margin: 12px auto;
+      padding: 12px 30px;
+      background-color: #111;
+      border: 2px solid #00ffa8;
+      color: #00ffa8;
+      border-radius: 25px;
+      cursor: pointer;
+      width: 70%;
+      font-size: 18px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      user-select: none;
+      box-shadow: 0 0 15px #00ffa8aa;
+    }
+
+    .answerBtn:hover {
+      background-color: #00ffa8;
+      color: #111;
+      box-shadow: 0 0 30px #00ffcc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cybersecurity Trivia Wheel</h1>
+  <canvas id="wheel" width="500" height="500"></canvas>
+  <button id="spinBtn">🎯 Spin the Wheel!</button>
+  <div id="result"></div>
+  <div id="questionBox"></div>
+  <div id="score">Score: 0</div>
+
+  <!-- Background Music -->
+  <audio id="bgMusic" loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/29/audio_93a0549114.mp3?filename=cyberpunk-hacker-13711.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    const canvas = document.getElementById("wheel");
+    const ctx = canvas.getContext("2d");
+
+    const segments = [
+      "Phishing", "Malware", "Password Security", "Firewalls",
+      "Social Engineering", "VPNs", "Multi-Factor Authentication", "Insider Threats"
+    ];
+
+    const colors = [
+      "#00ffa8", "#00c2ff", "#0099ff", "#00ffaa",
+      "#00d4ff", "#00b5ff", "#00ffa8", "#00ccff"
+    ];
+
+    const arc = (Math.PI * 2) / segments.length;
+    let startAngle = 0;
+    let spinTimeout = null;
+    let spinAngleStart = 0;
+    let spinTime = 0;
+    let spinTimeTotal = 0;
+    let score = 0;
+    let currentQuestionIndex = 0;
+    let selectedTopic = "";
+
+    const bgMusic = document.getElementById("bgMusic");
+
+    const questions = {
+      "Phishing": [
+        {
+          question: "What is a common sign of a phishing email?",
+          options: [
+            "Proper grammar",
+            "Unknown sender asking info",
+            "A verified email",
+            "No links"
+          ],
+          answer: 1
+        },
+        {
+          question: "What should you do with a suspicious email?",
+          options: [
+            "Click the link",
+            "Reply to confirm",
+            "Report and delete it",
+            "Open attachment"
+          ],
+          answer: 2
+        }
+      ],
+      "Malware": [
+        {
+          question: "Which of these is NOT a type of malware?",
+          options: ["Trojan", "Firewall", "Ransomware", "Spyware"],
+          answer: 1
+        },
+        {
+          question: "What does ransomware do?",
+          options: [
+            "Deletes files",
+            "Steals photos",
+            "Encrypts and demands payment",
+            "Updates antivirus"
+          ],
+          answer: 2
+        }
+      ],
+      "Password Security": [
+        {
+          question: "What is the safest way to manage passwords?",
+          options: [
+            "Use one password",
+            "Write them down",
+            "Use a password manager",
+            "Share with friends"
+          ],
+          answer: 2
+        },
+        {
+          question: "Which is a strong password?",
+          options: ["password123", "John2020", "Qwerty", "G7$!x@A9z"],
+          answer: 3
+        }
+      ],
+      "Firewalls": [
+        {
+          question: "What does a firewall do?",
+          options: [
+            "Scans for viruses",
+            "Blocks unauthorized access",
+            "Creates backups",
+            "Encrypts data"
+          ],
+          answer: 1
+        },
+        {
+          question: "Where is a firewall typically used?",
+          options: [
+            "In a printer",
+            "In a coffee machine",
+            "Between network and internet",
+            "Inside a keyboard"
+          ],
+          answer: 2
+        }
+      ],
+      "Social Engineering": [
+        {
+          question: "What is social engineering?",
+          options: [
+            "Safe media use",
+            "Encryption method",
+            "Firewall misconfig",
+            "Manipulating people"
+          ],
+          answer: 3
+        },
+        {
+          question: "Which is a common social engineering tactic?",
+          options: ["Brute force", "Tailgating", "IP spoofing", "Keylogging"],
+          answer: 1
+        }
+      ],
+      "VPNs": [
+        {
+          question: "What is the purpose of a VPN?",
+          options: [
+            "Speed up internet",
+            "Hide IP & encrypt traffic",
+            "Stop viruses",
+            "Block ads"
+          ],
+          answer: 1
+        },
+        {
+          question: "Which is a benefit of VPN?",
+          options: [
+            "Open public Wi-Fi safely",
+            "Faster gaming",
+            "More spam",
+            "Virus removal"
+          ],
+          answer: 0
+        }
+      ],
+      "Multi-Factor Authentication": [
+        {
+          question: "Which is an example of MFA?",
+          options: [
+            "Password only",
+            "SMS code only",
+            "Password + SMS",
+            "Username only"
+          ],
+          answer: 2
+        },
+        {
+          question: "What does MFA help prevent?",
+          options: [
+            "Phishing",
+            "Account compromise",
+            "Slow browsing",
+            "Antivirus issues"
+          ],
+          answer: 1
+        }
+      ],
+      "Insider Threats": [
+        {
+          question: "What is an insider threat?",
+          options: [
+            "External hacker",
+            "Misconfigured firewall",
+            "Trusted user misusing access",
+            "Email virus"
+          ],
+          answer: 2
+        },
+        {
+          question: "How to detect insider threats?",
+          options: [
+            "Monitor access logs",
+            "Ignore activity",
+            "Use strong passwords",
+            "Uninstall updates"
+          ],
+          answer: 0
+        }
+      ]
+    };
+
+    function drawWheel() {
+      ctx.clearRect(0, 0, 500, 500);
+      ctx.lineWidth = 2;
+      for (let i = 0; i < segments.length; i++) {
+        const angle = startAngle + i * arc;
+        ctx.fillStyle = colors[i];
+        ctx.strokeStyle = "#000";
+        ctx.beginPath();
+        ctx.moveTo(250, 250);
+        ctx.arc(250, 250, 200, angle, angle + arc, false);
+        ctx.lineTo(250, 250);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(
+          250 + Math.cos(angle + arc / 2) * 140,
+          250 + Math.sin(angle + arc / 2) * 140
+        );
+        ctx.rotate(angle + arc / 2);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px Segoe UI";
+        ctx.textAlign = "center";
+
+        const text = segments[i];
+        const words = text.split(" ");
+        for (let j = 0; j < words.length; j++) {
+          ctx.fillText(words[j], 0, j * 16 - (words.length - 1) * 8);
+        }
+        ctx.restore();
+      }
+
+      // Pointer
+      ctx.fillStyle = "#00ffa8";
+      ctx.beginPath();
+      ctx.moveTo(240, 20);
+      ctx.lineTo(260, 20);
+      ctx.lineTo(250, 40);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function rotateWheel() {
+      bgMusic.currentTime = 0;
+      bgMusic.volume = 0.3;
+      bgMusic.play();
+
+      spinAngleStart = Math.random() * 10 + 15;
+      spinTime = 0;
+      spinTimeTotal = Math.random() * 3000 + 4000;
+      rotate();
+    }
+
+    function rotate() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        stopRotateWheel();
+        return;
+      }
+      const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+      startAngle += (spinAngle * Math.PI) / 180;
+      drawWheel();
+      spinTimeout = setTimeout(rotate, 30);
+    }
+
+    function stopRotateWheel() {
+      bgMusic.pause();
+      const degrees = (startAngle * 180) / Math.PI + 90;
+      const arcd = (arc * 180) / Math.PI;
+      const index = Math.floor((360 - (degrees % 360)) / arcd) % segments.length;
+      selectedTopic = segments[index];
+      document.getElementById("result").innerText = "Topic: " + selectedTopic;
+      currentQuestionIndex = 0;
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const qData = questions[selectedTopic][currentQuestionIndex];
+      const qBox = document.getElementById("questionBox");
+      qBox.innerHTML = `<strong>${qData.question}</strong><br>`;
+      qData.options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.className = "answerBtn";
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(i, qData.answer);
+        qBox.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected, correct) {
+      const qBox = document.getElementById("questionBox");
+      if (selected === correct) {
+        score++;
+        qBox.innerHTML = `<p style="color:#00ffb3; font-weight: 700;">✅ Correct!</p>`;
+      } else {
+        qBox.innerHTML = `<p style="color:#ff4c4c; font-weight: 700;">❌ Incorrect!</p>`;
+      }
+      document.getElementById("score").innerText = "Score: " + score;
+
+      currentQuestionIndex++;
+      if (currentQuestionIndex < 2) {
+        setTimeout(showQuestion, 1500);
+      } else {
+        setTimeout(() => {
+          document.getElementById("questionBox").innerHTML = "";
+        }, 1500);
+      }
+    }
+
+    function easeOut(t, b, c, d) {
+      const ts = (t /= d) * t;
+      const tc = ts * t;
+      return b + c * (tc + -3 * ts + 3 * t);
+    }
+
+    document.getElementById("spinBtn").addEventListener("click", () => {
+      document.getElementById("result").innerText = "";
+      document.getElementById("questionBox").innerHTML = "";
+      rotateWheel();
+    });
+
+    drawWheel();
+  </script>
+</body>
+</html>
